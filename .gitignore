@@ -1,0 +1,19 @@
+# Dependencias de Node
+node_modules/
+npm-debug.log*
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Capacitor / Android Studio internos
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/*.iml
+android/local.properties
+
+# Si usas variables de entorno
+.env
+.env.local
