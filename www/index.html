@@ -2,19 +2,77 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>iTimer</title>
-
     <link rel="stylesheet" type="text/css" href="style.css" />
-
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
   </head>
   <body>
-    <div id="container">
-      <button id="startBtn">Start</button>
+    <div id="screen-welcome" class="screen active">
+      <div class="logo-area">
+        <div class="logo-circle">⏱️</div>
+        <h1>iTimer</h1>
+        <p>Enfócate con estilo</p>
+      </div>
+      <div class="menu-vertical">
+        <button class="btn-primary" onclick="showScreen('screen-timer')">
+          Comenzar
+        </button>
+        <button class="btn-secondary" onclick="showScreen('screen-tasks')">
+          Tareas
+        </button>
+        <button class="btn-secondary" onclick="showScreen('screen-settings')">
+          Ajustes
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-timer" class="screen">
+      <button class="btn-icon-back" onclick="showScreen('screen-welcome')">
+        ✕
+      </button>
       <div id="p5-container"></div>
-      <div id="timer">10</div>
+      <div id="timer-label">Trabajo</div>
+      <div id="timer">25:00</div>
+      <button id="startBtn" class="btn-action">Iniciar</button>
+    </div>
+
+    <div id="screen-tasks" class="screen">
+      <button class="btn-icon-back" onclick="showScreen('screen-welcome')">
+        ←
+      </button>
+      <h2>Mis Tareas</h2>
+      <div class="task-input-group">
+        <input
+          type="text"
+          id="taskInput"
+          placeholder="¿En qué vas a trabajar?"
+        />
+        <button onclick="addTask()" class="btn-icon-add">+</button>
+      </div>
+      <ul id="taskList"></ul>
+    </div>
+
+    <div id="screen-settings" class="screen">
+      <button class="btn-icon-back" onclick="showScreen('screen-welcome')">
+        ←
+      </button>
+      <h2>Configuración</h2>
+      <div class="card">
+        <div class="setting-row">
+          <span>Trabajo (min)</span>
+          <input type="number" id="workTime" value="25" />
+        </div>
+        <div class="setting-row">
+          <span>Descanso (min)</span>
+          <input type="number" id="breakTime" value="5" />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveSettings()">Guardar</button>
     </div>
 
     <script src="sketch.js"></script>
