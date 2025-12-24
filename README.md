@@ -16,6 +16,7 @@ La aplicación se desarrolla utilizando tecnologías web y se empaqueta como app
 - **Android Studio** – compilación y ejecución en Android
 - **Haptics API (Capacitor)** – vibración nativa
 - **LocalStorage** – persistencia de configuración
+- **Preferences API (Capacitor)** – persistencia de datos nativa
 
 ---
 
@@ -26,7 +27,7 @@ La aplicación se desarrolla utilizando tecnologías web y se empaqueta como app
    - Tiempo de trabajo (minutos)
    - Tiempo de descanso (minutos)
 
-2. La configuración se guarda en `localStorage`
+2. La configuración se guarda de forma persistente usando Preferences de Capacitor
 3. El temporizador alterna automáticamente entre:
 
    - **Trabajo**
@@ -41,6 +42,43 @@ La aplicación se desarrolla utilizando tecnologías web y se empaqueta como app
    - Vibración (últimos 10 segundos)
 
 ---
+
+## 💾 Persistencia de datos (Preferences – Capacitor)
+
+Inicialmente la persistencia se planteó mediante localStorage, pero al tratarse de una aplicación empaquetada como app nativa, se migró a la API Preferences de Capacitor, que ofrece una solución más adecuada y alineada con el entorno móvil.
+
+**¿Por qué Preferences?**
+
+- Funciona tanto en web como en Android/iOS
+- Utiliza almacenamiento nativo del sistema
+- Evita depender del contexto del navegador
+- Es la solución recomendada por Capacitor para persistencia simple
+
+**Guardado de configuración**
+
+```js
+await Preferences.set({
+  key: "workTime",
+  value: workMinutes.toString(),
+});
+
+await Preferences.set({
+  key: "breakTime",
+  value: breakMinutes.toString(),
+});
+```
+
+**_Carga de configuración al iniciar la app_**
+
+```js
+const work = await Preferences.get({ key: "workTime" });
+const rest = await Preferences.get({ key: "breakTime" });
+
+workMinutes = work.value ? parseInt(work.value) : 25;
+breakMinutes = rest.value ? parseInt(rest.value) : 5;
+```
+
+Esta lógica permite que la configuración del usuario persista correctamente entre sesiones, incluso tras cerrar la aplicación.
 
 ## ⏱️ Lógica del temporizador
 

@@ -1,4 +1,4 @@
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
+const { Preferences } = Capacitor.Plugins;
 
 let timer; // Segundos totales
 let workMinutes = 25;
@@ -12,12 +12,43 @@ let fadeStart = 0;
 let isBreak = false; // Nueva variable para controlar el estado
 let breakMinutes = 5; // Valor por defecto
 let soundEffect;
-let HapticsAvailable = false;
+let notificationsGranted = false;
+let lastVibrationSecond = null;
 
 function preload() {
   try {
     soundEffect = loadSound("assets/lofi.mp3");
   } catch (e) {}
+}
+
+window.showScreen = function (screenId) {
+  document
+    .querySelectorAll(".screen")
+    .forEach((s) => s.classList.remove("active"));
+  document.getElementById(screenId).classList.add("active");
+};
+
+window.addTask = function () {
+  let val = document.getElementById("taskInput").value;
+  if (!val) return;
+  let li = document.createElement("li");
+  li.innerHTML = `<span>${val}</span> <button onclick="this.parentElement.remove()" style="background:none; color:#ef4444;">✕</button>`;
+  document.getElementById("taskList").appendChild(li);
+  document.getElementById("taskInput").value = "";
+};
+
+async function saveSettingsNative() {
+  await Preferences.set({
+    key: "workTime",
+    value: workMinutes.toString(),
+  });
+
+  await Preferences.set({
+    key: "breakTime",
+    value: breakMinutes.toString(),
+  });
+
+  console.log("✅ Ajustes guardados con Preferences");
 }
 
 function vibrateTick() {
@@ -34,6 +65,42 @@ function vibrateTick() {
   }
 }
 
+async function requestNotificationPermission() {
+  if (!window.Capacitor) return;
+
+  const perm = await Capacitor.Plugins.LocalNotifications.requestPermissions();
+  notificationsGranted = perm.display === "granted";
+}
+
+async function sendNotification(title, body) {
+  if (!window.Capacitor || !notificationsGranted) return;
+
+  await Capacitor.Plugins.LocalNotifications.schedule({
+    notifications: [
+      {
+        title,
+        body,
+        id: Date.now(),
+        schedule: { at: new Date(Date.now() + 100) },
+        sound: null,
+      },
+    ],
+  });
+}
+
+async function loadSettingsNative() {
+  const work = await Preferences.get({ key: "workTime" });
+  const rest = await Preferences.get({ key: "breakTime" });
+
+  workMinutes = work.value ? parseInt(work.value) : 25;
+  breakMinutes = rest.value ? parseInt(rest.value) : 5;
+
+  document.getElementById("workTime").value = workMinutes;
+  document.getElementById("breakTime").value = breakMinutes;
+
+  console.log("📦 Ajustes cargados desde Preferences");
+}
+
 function setup() {
   let cnv = createCanvas(windowWidth * 0.8, windowWidth * 0.8, WEBGL);
   cnv.parent("p5-container");
@@ -42,9 +109,11 @@ function setup() {
   workMinutes = parseInt(localStorage.getItem("workTime")) || 25;
   breakMinutes = parseInt(localStorage.getItem("breakTime")) || 5;
 
-  document.getElementById("workTime").value = workMinutes;
-  document.getElementById("breakTime").value = breakMinutes;
+  // document.getElementById("workTime").value = workMinutes;
+  // document.getElementById("breakTime").value = breakMinutes;
 
+  loadSettingsNative();
+  requestNotificationPermission();
   resetPomodoro();
 
   document.getElementById("startBtn").addEventListener("click", () => {
@@ -71,7 +140,6 @@ function draw() {
       actualizarUI();
 
       //vibrar en los últimos 10 segundos
-      let lastVibrationSecond = null;
       if (timer <= 10 && timer > 0 && timer !== lastVibrationSecond) {
         vibrateTick();
         lastVibrationSecond = timer;
@@ -91,13 +159,6 @@ function draw() {
   }
 
   dibujarEscena();
-}
-
-function showScreen(screenId) {
-  document
-    .querySelectorAll(".screen")
-    .forEach((s) => s.classList.remove("active"));
-  document.getElementById(screenId).classList.add("active");
 }
 
 function actualizarUI() {
@@ -131,15 +192,21 @@ function finalizar() {
     document.getElementById("timer-label").style.color = "#4ade80"; // Verde
 
     if (soundEffect && !soundEffect.isPlaying()) soundEffect.loop();
+    // 🔔 Notificación de descanso
+    sendNotification("Descanso", "¡Es hora de tomar un descanso! ☕");
   } else {
     // Si terminamos el descanso, volviendo a trabajar
     isBreak = false;
     timer = workMinutes * 60;
     document.getElementById("timer-label").innerText = "Trabajo";
+
     // ⏹️ Parar música
     if (soundEffect && soundEffect.isPlaying()) {
       soundEffect.stop();
     }
+
+    // 🔔 Notificación de trabajo
+    sendNotification("Trabajo", "¡Es hora de volver al trabajo! 💪");
   }
 
   document.getElementById("startBtn").innerText =
@@ -157,16 +224,18 @@ function resetPomodoro() {
   document.getElementById("startBtn").innerText = "Iniciar";
 }
 
-function saveSettings() {
+window.saveSettings = async function () {
   workMinutes = parseInt(document.getElementById("workTime").value);
   breakMinutes = parseInt(document.getElementById("breakTime").value);
-  localStorage.setItem("workTime", workMinutes);
-  localStorage.setItem("breakTime", breakMinutes);
+  // localStorage.setItem("workTime", workMinutes);
+  // localStorage.setItem("breakTime", breakMinutes);
 
+  await saveSettingsNative();
   resetPomodoro();
+
   alert("¡Ajustes actualizados!");
   showScreen("screen-welcome");
-}
+};
 
 function dibujarEscena() {
   push();
@@ -189,14 +258,4 @@ function dibujarEscena() {
 
   box(cubeSize + 5);
   pop();
-}
-
-function addTask() {
-  let val = document.getElementById("taskInput").value;
-  if (!val) return;
-  let li = document.createElement("li");
-  li.innerHTML = `<span>${val}</span> <button onclick="this.parentElement.remove()" style="background:none; color:#ef4444;">✕</button>`;
-
-  document.getElementById("taskList").appendChild(li);
-  document.getElementById("taskInput").value = "";
 }
