@@ -110,21 +110,60 @@ async function loadSettingsNative() {
 async function requestNotificationPermission() {
   const perm = await LocalNotifications.requestPermissions();
   notificationsGranted = perm.display === "granted";
+  if (notificationsGranted) {
+    // CREAR CANAL DE ALTA IMPORTANCIA
+    await LocalNotifications.createChannel({
+      id: "pomodoro-channel",
+      name: "Alertas de Pomodoro",
+      description: "Notificaciones de fin de ciclo",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    });
+  }
 }
 
-async function sendNotification(title, body) {
-  if (!notificationsGranted) return;
+async function schedulePomodoroNotification() {
+  if (!notificationsGranted || !endTimestamp) return;
 
-  await LocalNotifications.schedule({
-    notifications: [
-      {
-        title,
-        body,
-        id: Date.now(),
-        schedule: { at: new Date(Date.now() + 100) },
-      },
-    ],
-  });
+  try {
+    // 1. Cancelamos cualquier notificación anterior con el mismo ID
+    await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+
+    // Si estamos en TRABAJO, la notificación debe avisar que el TRABAJO ha terminado.
+    const titleText = isBreak
+      ? "¡Descanso terminado!"
+      : "¡Tiempo de trabajo cumplido!";
+    const bodyText = isBreak
+      ? "Vuelve al trabajo con energía 💪"
+      : "Te has ganado un descanso ☕";
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: 1, // ID fijo y pequeño
+          title: titleText,
+          body: bodyText,
+          channelId: "pomodoro-channel",
+          schedule: {
+            at: new Date(endTimestamp),
+            allowWhileIdle: true,
+            repeats: false,
+            every: null,
+          },
+          sound: null,
+          attachments: null,
+          extra: null,
+        },
+      ],
+    });
+    console.log(
+      "🔔 Programada para:",
+      new Date(endTimestamp).toLocaleTimeString()
+    );
+  } catch (e) {
+    console.error("Error programando:", e);
+  }
 }
 
 /* =====================
@@ -141,6 +180,23 @@ function vibrateTick() {
 async function setup() {
   const cnv = createCanvas(windowWidth * 0.8, windowWidth * 0.8, WEBGL);
   cnv.parent("p5-container");
+
+  ////////TESTING//////////
+  // setTimeout(async () => {
+  //   console.log("🔔 TEST: programando notificación en 5s");
+
+  //   await LocalNotifications.schedule({
+  //     notifications: [
+  //       {
+  //         title: "TEST iTimer",
+  //         body: "Si ves esto flipas! ✅",
+  //         id: 999,
+  //         schedule: { at: new Date(Date.now() + 5000) },
+  //       },
+  //     ],
+  //   });
+  // }, 2000);
+  /////////////////////////
 
   await loadSettingsNative();
   await loadTasks();
@@ -196,7 +252,11 @@ function draw() {
 function startPomodoro() {
   running = true;
   paused = false;
+
   endTimestamp = Date.now() + timer * 1000;
+
+  schedulePomodoroNotification();
+
   document.getElementById("startBtn").innerText = "Pausar";
 }
 
@@ -205,22 +265,20 @@ function finalizar() {
   fadeOut = true;
   fadeStart = millis();
 
-  if (!isBreak) {
-    isBreak = true;
+  isBreak = !isBreak;
+
+  if (isBreak) {
     timer = breakMinutes * 60;
     document.getElementById("timer-label").innerText = "Descanso";
     document.getElementById("timer-label").style.color = "#4ade80";
     soundEffect?.loop();
-    sendNotification("Descanso", "Hora de descansar ☕");
   } else {
-    isBreak = false;
     timer = workMinutes * 60;
     document.getElementById("timer-label").innerText = "Trabajo";
     soundEffect?.stop();
-    sendNotification("Trabajo", "Vuelta al trabajo 💪");
   }
 
-  endTimestamp = Date.now() + timer * 1000;
+  actualizarUI();
   document.getElementById("startBtn").innerText = "Iniciar";
 }
 
