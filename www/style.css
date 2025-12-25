@@ -96,6 +96,13 @@ button {
   border-radius: 50%;
 }
 
+.icon-back {
+  font-size: 18px;
+  /* line-height: 44px; */
+  padding-top: -12px;
+  color: var(--accent);
+}
+
 .btn-icon-add {
   background: var(--accent);
   color: white;

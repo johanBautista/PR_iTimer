@@ -1,26 +1,40 @@
-const { Preferences } = Capacitor.Plugins;
+const { Preferences, Haptics, LocalNotifications } = Capacitor.Plugins;
 
-let timer; // Segundos totales
+/* =====================
+   ESTADO GLOBAL
+===================== */
+let timer = 0;
 let workMinutes = 25;
+let breakMinutes = 5;
 let running = false;
 let paused = false;
-let lastTime = 0;
+let isBreak = false;
+
+let endTimestamp = null;
+let lastVibrationSecond = null;
+
 let cubeSize = 100;
 let angleY = 0;
 let fadeOut = false;
 let fadeStart = 0;
-let isBreak = false; // Nueva variable para controlar el estado
-let breakMinutes = 5; // Valor por defecto
+
 let soundEffect;
 let notificationsGranted = false;
-let lastVibrationSecond = null;
 
+/* =====================
+   PRELOAD
+===================== */
 function preload() {
   try {
     soundEffect = loadSound("assets/lofi.mp3");
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Sonido no cargado");
+  }
 }
 
+/* =====================
+   NAVEGACIÓN
+===================== */
 window.showScreen = function (screenId) {
   document
     .querySelectorAll(".screen")
@@ -28,64 +42,55 @@ window.showScreen = function (screenId) {
   document.getElementById(screenId).classList.add("active");
 };
 
-window.addTask = function () {
-  let val = document.getElementById("taskInput").value;
-  if (!val) return;
-  let li = document.createElement("li");
-  li.innerHTML = `<span>${val}</span> <button onclick="this.parentElement.remove()" style="background:none; color:#ef4444;">✕</button>`;
+/* =====================
+   TAREAS (PERSISTENTES)
+===================== */
+window.addTask = async function () {
+  const input = document.getElementById("taskInput");
+  if (!input.value) return;
+
+  const li = document.createElement("li");
+  li.innerHTML = `
+    <span>${input.value}</span>
+    <button onclick="this.parentElement.remove(); saveTasks()">✕</button>
+  `;
   document.getElementById("taskList").appendChild(li);
-  document.getElementById("taskInput").value = "";
+  input.value = "";
+
+  await saveTasks();
 };
 
+async function saveTasks() {
+  const tasks = [...document.querySelectorAll("#taskList li span")].map(
+    (el) => el.innerText
+  );
+
+  await Preferences.set({
+    key: "tasks",
+    value: JSON.stringify(tasks),
+  });
+}
+
+async function loadTasks() {
+  const { value } = await Preferences.get({ key: "tasks" });
+  if (!value) return;
+
+  JSON.parse(value).forEach((task) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span>${task}</span>
+      <button onclick="this.parentElement.remove(); saveTasks()">✕</button>
+    `;
+    document.getElementById("taskList").appendChild(li);
+  });
+}
+
+/* =====================
+   AJUSTES (PREFERENCES)
+===================== */
 async function saveSettingsNative() {
-  await Preferences.set({
-    key: "workTime",
-    value: workMinutes.toString(),
-  });
-
-  await Preferences.set({
-    key: "breakTime",
-    value: breakMinutes.toString(),
-  });
-
-  console.log("✅ Ajustes guardados con Preferences");
-}
-
-function vibrateTick() {
-  console.log("[HAPTICS] tick final:", timer);
-
-  if (window.Capacitor && Capacitor.isNativePlatform()) {
-    try {
-      Capacitor.Plugins.Haptics.impact({
-        style: "LIGHT",
-      });
-    } catch (e) {
-      console.warn("Haptics no disponible", e);
-    }
-  }
-}
-
-async function requestNotificationPermission() {
-  if (!window.Capacitor) return;
-
-  const perm = await Capacitor.Plugins.LocalNotifications.requestPermissions();
-  notificationsGranted = perm.display === "granted";
-}
-
-async function sendNotification(title, body) {
-  if (!window.Capacitor || !notificationsGranted) return;
-
-  await Capacitor.Plugins.LocalNotifications.schedule({
-    notifications: [
-      {
-        title,
-        body,
-        id: Date.now(),
-        schedule: { at: new Date(Date.now() + 100) },
-        sound: null,
-      },
-    ],
-  });
+  await Preferences.set({ key: "workTime", value: workMinutes.toString() });
+  await Preferences.set({ key: "breakTime", value: breakMinutes.toString() });
 }
 
 async function loadSettingsNative() {
@@ -97,31 +102,60 @@ async function loadSettingsNative() {
 
   document.getElementById("workTime").value = workMinutes;
   document.getElementById("breakTime").value = breakMinutes;
-
-  console.log("📦 Ajustes cargados desde Preferences");
 }
 
-function setup() {
-  let cnv = createCanvas(windowWidth * 0.8, windowWidth * 0.8, WEBGL);
+/* =====================
+   NOTIFICACIONES
+===================== */
+async function requestNotificationPermission() {
+  const perm = await LocalNotifications.requestPermissions();
+  notificationsGranted = perm.display === "granted";
+}
+
+async function sendNotification(title, body) {
+  if (!notificationsGranted) return;
+
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        title,
+        body,
+        id: Date.now(),
+        schedule: { at: new Date(Date.now() + 100) },
+      },
+    ],
+  });
+}
+
+/* =====================
+   HAPTICS
+===================== */
+function vibrateTick() {
+  Haptics.impact({ style: "HEAVY" });
+  Haptics.vibrate({ duration: 300 });
+}
+
+/* =====================
+   P5 SETUP
+===================== */
+async function setup() {
+  const cnv = createCanvas(windowWidth * 0.8, windowWidth * 0.8, WEBGL);
   cnv.parent("p5-container");
 
-  // Cargar ajustes guardados
-  workMinutes = parseInt(localStorage.getItem("workTime")) || 25;
-  breakMinutes = parseInt(localStorage.getItem("breakTime")) || 5;
+  await loadSettingsNative();
+  await loadTasks();
+  await requestNotificationPermission();
 
-  // document.getElementById("workTime").value = workMinutes;
-  // document.getElementById("breakTime").value = breakMinutes;
-
-  loadSettingsNative();
-  requestNotificationPermission();
   resetPomodoro();
 
   document.getElementById("startBtn").addEventListener("click", () => {
-    if (!running && !fadeOut) {
+    if (!running) {
       startPomodoro();
     } else {
       paused = !paused;
-      lastTime = millis();
+      if (!paused) {
+        endTimestamp = Date.now() + timer * 1000;
+      }
       document.getElementById("startBtn").innerText = paused
         ? "Reanudar"
         : "Pausar";
@@ -129,51 +163,40 @@ function setup() {
   });
 }
 
+/* =====================
+   DRAW LOOP
+===================== */
 function draw() {
-  background(15, 23, 42); // Match CSS --bg-color
+  background(15, 23, 42);
 
-  if (running && !paused) {
-    let currentMillis = millis();
-    if (currentMillis - lastTime >= 1000) {
-      timer--;
-      lastTime = currentMillis;
-      actualizarUI();
+  if (running && !paused && endTimestamp) {
+    timer = Math.max(0, Math.floor((endTimestamp - Date.now()) / 1000));
+    actualizarUI();
 
-      //vibrar en los últimos 10 segundos
-      if (timer <= 10 && timer > 0 && timer !== lastVibrationSecond) {
-        vibrateTick();
-        lastVibrationSecond = timer;
-      }
+    if (timer <= 10 && timer > 0 && timer !== lastVibrationSecond) {
+      vibrateTick();
+      lastVibrationSecond = timer;
     }
   }
 
-  if (timer <= 0 && running) finalizar();
+  if (timer === 0 && running) finalizar();
 
   if (fadeOut) {
-    let elapsed = millis() - fadeStart;
+    const elapsed = millis() - fadeStart;
     cubeSize = elapsed < 2000 ? map(elapsed, 0, 2000, 100, 0) : 0;
-    if (elapsed >= 2000) {
-      fadeOut = false;
-      resetPomodoro();
-    }
+    if (elapsed >= 2000) resetPomodoro();
   }
 
   dibujarEscena();
 }
 
-function actualizarUI() {
-  let mins = Math.floor(timer / 60);
-  let secs = timer % 60;
-  let timeString = `${nf(mins, 2)}:${nf(secs, 2)}`;
-  document.getElementById("timer").innerText = timeString;
-  document.getElementById("timer").style.color =
-    timer <= 10 ? "#ef4444" : "#ffffff";
-}
-
+/* =====================
+   TIMER LOGIC
+===================== */
 function startPomodoro() {
   running = true;
   paused = false;
-  lastTime = millis();
+  endTimestamp = Date.now() + timer * 1000;
   document.getElementById("startBtn").innerText = "Pausar";
 }
 
@@ -182,68 +205,55 @@ function finalizar() {
   fadeOut = true;
   fadeStart = millis();
 
-  // Lógica de cambio de estado
   if (!isBreak) {
-    // Si terminamos de trabajar, pasamos a descanso
     isBreak = true;
     timer = breakMinutes * 60;
-
     document.getElementById("timer-label").innerText = "Descanso";
-    document.getElementById("timer-label").style.color = "#4ade80"; // Verde
-
-    if (soundEffect && !soundEffect.isPlaying()) soundEffect.loop();
-    // 🔔 Notificación de descanso
-    sendNotification("Descanso", "¡Es hora de tomar un descanso! ☕");
+    document.getElementById("timer-label").style.color = "#4ade80";
+    soundEffect?.loop();
+    sendNotification("Descanso", "Hora de descansar ☕");
   } else {
-    // Si terminamos el descanso, volviendo a trabajar
     isBreak = false;
     timer = workMinutes * 60;
     document.getElementById("timer-label").innerText = "Trabajo";
-
-    // ⏹️ Parar música
-    if (soundEffect && soundEffect.isPlaying()) {
-      soundEffect.stop();
-    }
-
-    // 🔔 Notificación de trabajo
-    sendNotification("Trabajo", "¡Es hora de volver al trabajo! 💪");
+    soundEffect?.stop();
+    sendNotification("Trabajo", "Vuelta al trabajo 💪");
   }
 
-  document.getElementById("startBtn").innerText =
-    "Iniciar " + (isBreak ? "Descanso" : "Trabajo");
+  endTimestamp = Date.now() + timer * 1000;
+  document.getElementById("startBtn").innerText = "Iniciar";
 }
 
 function resetPomodoro() {
-  // timer = workMinutes * 60;
-  timer = (isBreak ? breakMinutes : workMinutes) * 60;
   running = false;
   paused = false;
   fadeOut = false;
   cubeSize = 100;
+  timer = (isBreak ? breakMinutes : workMinutes) * 60;
   actualizarUI();
   document.getElementById("startBtn").innerText = "Iniciar";
 }
 
-window.saveSettings = async function () {
-  workMinutes = parseInt(document.getElementById("workTime").value);
-  breakMinutes = parseInt(document.getElementById("breakTime").value);
-  // localStorage.setItem("workTime", workMinutes);
-  // localStorage.setItem("breakTime", breakMinutes);
+/* =====================
+   UI
+===================== */
+function actualizarUI() {
+  const mins = Math.floor(timer / 60);
+  const secs = timer % 60;
+  document.getElementById("timer").innerText = `${nf(mins, 2)}:${nf(secs, 2)}`;
+  document.getElementById("timer").style.color =
+    timer <= 10 ? "#ef4444" : "#ffffff";
+}
 
-  await saveSettingsNative();
-  resetPomodoro();
-
-  alert("¡Ajustes actualizados!");
-  showScreen("screen-welcome");
-};
-
+/* =====================
+   ESCENA
+===================== */
 function dibujarEscena() {
   push();
   rotateX(-PI / 8);
   rotateY(angleY);
-  if ((running && !paused) || fadeOut) angleY += 0.02;
+  if (running && !paused) angleY += 0.02;
 
-  // Estilo del cubo
   noFill();
   strokeWeight(2);
 
@@ -256,6 +266,18 @@ function dibujarEscena() {
     stroke(timer <= 10 && running ? [239, 68, 68] : [56, 189, 248]); // Rojo/Azul trabajo
   }
 
-  box(cubeSize + 5);
+  box(cubeSize);
   pop();
 }
+
+/* =====================
+   SETTINGS BUTTON
+===================== */
+window.saveSettings = async function () {
+  workMinutes = parseInt(document.getElementById("workTime").value);
+  breakMinutes = parseInt(document.getElementById("breakTime").value);
+  await saveSettingsNative();
+  resetPomodoro();
+  alert("Ajustes guardados");
+  showScreen("screen-welcome");
+};
