@@ -1,0 +1,192 @@
+:root {
+  --bg-color: #0f172a;
+  --card-bg: #1e293b;
+  --accent: #38bdf8;
+  --text-main: #f8fafc;
+  --text-dim: #94a3b8;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.screen.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* BOTONES */
+button {
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  padding: 18px 60px;
+  font-size: 18px;
+  width: 100%;
+  max-width: 250px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+}
+
+.btn-secondary {
+  background: var(--card-bg);
+  color: var(--text-main);
+  padding: 14px 40px;
+  width: 100%;
+  max-width: 250px;
+  margin-bottom: 10px;
+}
+
+.btn-action {
+  background: var(--text-main);
+  color: var(--bg-color);
+  padding: 15px 50px;
+  font-size: 20px;
+  margin-top: 30px;
+}
+
+.btn-icon-back {
+  position: absolute;
+  top: 50px;
+  left: 25px;
+  background: var(--card-bg);
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.icon-back {
+  font-size: 18px;
+  /* line-height: 44px; */
+  padding-top: -12px;
+  color: var(--accent);
+}
+
+.btn-icon-add {
+  background: var(--accent);
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 24px;
+  padding: 0;
+  margin-left: 10px;
+}
+
+/* PANTALLA BIENVENIDA */
+.logo-area {
+  text-align: center;
+  margin-bottom: 50px;
+}
+.logo-circle {
+  font-size: 50px;
+  background: var(--card-bg);
+  width: 100px;
+  height: 100px;
+  line-height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+}
+.menu-vertical {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* TIMER */
+#timer {
+  font-size: 84px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+#timer-label {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 14px;
+}
+
+/* AJUSTES Y TAREAS */
+.card {
+  background: var(--card-bg);
+  width: 100%;
+  padding: 20px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #334155;
+}
+.task-input-group {
+  display: flex;
+  width: 100%;
+}
+input {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  flex-grow: 1;
+}
+
+/* AJUSTES */
+#taskList {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+}
+#taskList li {
+  background: var(--card-bg);
+  margin-bottom: 10px;
+  padding: 15px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+}

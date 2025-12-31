@@ -155,6 +155,18 @@ Esto confirma que:
 4. Apertura del proyecto en Android Studio
 5. Ejecución en emulador o dispositivo real
 
+## 🔄 Flujo de compilado y ejecución en Android
+
+Para compilar el proyecto y ejecutarlo en Android Studio, se debe seguir el siguiente flujo:
+
+- 📦 **_npm install_** Instala las dependencias necesarias del proyecto.
+
+- 🏗️ **_npm run build_** Prepara la aplicación web copiando los archivos a la carpeta www.
+
+- 🔄 **_npx cap sync android_** Sincroniza los cambios del proyecto web con la plataforma Android.
+
+- 📱 **_npx cap open android_** Abre el proyecto en Android Studio para su ejecución y evaluación.
+
 ---
 
 ## ⚠️ Limitaciones conocidas
