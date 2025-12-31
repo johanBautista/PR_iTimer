@@ -164,6 +164,13 @@ Esto confirma que:
 
 ---
 
+## 📬 Dispositivos
+
+- Las pruebas de las funcionalidades nativas se han realizado utilizando un dispositivo físico **Samsung Galaxy A16 5G con Android 14**, conectado por USB al ordenador.
+  Durante el desarrollo y para el resto de pruebas se ha utilizado un emulador virtual en Android Studio, modelo **Medium Phone API 36.1** (Android 15).
+
+---
+
 ## ✅ Conclusión
 
 Este MVP demuestra la integración efectiva entre tecnologías web y APIs nativas mediante Capacitor, cumpliendo los objetivos funcionales del temporizador y validando la viabilidad del enfoque híbrido para aplicaciones móviles.
